@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MT5 Discipline Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MT5 Discipline Tracker</h1>
+            <div class="streak-counter">
+                <span id="streak">Streak: 0 days</span>
+            </div>
+        </header>
+
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="screen active">
+            <h2>Setup Your Trading Checklist</h2>
+            <div class="setup-section">
+                <h3>Pre-Trading Checklist</h3>
+                <div id="checklist-builder">
+                    <div class="checklist-item">
+                        <input type="text" placeholder="e.g., Market analysis complete" class="checklist-input">
+                        <button class="remove-item">×</button>
+                    </div>
+                </div>
+                <button id="add-checklist-item">+ Add Item</button>
+            </div>
+            
+            <div class="setup-section">
+                <h3>Delay Timer (minutes)</h3>
+                <input type="number" id="delay-input" min="1" max="60" value="5">
+            </div>
+            
+            <button id="save-setup" class="primary-btn">Save Setup</button>
+        </div>
+
+        <!-- Feedback Screen -->
+        <div id="feedback-screen" class="screen">
+            <h2>How Was Your Last Trading Session?</h2>
+            <div class="feedback-section">
+                <div class="question">
+                    <label>Did you follow your trading plan?</label>
+                    <select id="followed-plan">
+                        <option value="">Select...</option>
+                        <option value="yes">Yes, completely</option>
+                        <option value="mostly">Mostly</option>
+                        <option value="partially">Partially</option>
+                        <option value="no">No, I deviated</option>
+                    </select>
+                </div>
+                
+                <div class="question">
+                    <label>Rate your discipline (1-10):</label>
+                    <input type="range" id="discipline-rating" min="1" max="10" value="5">
+                    <span id="discipline-value">5</span>
+                </div>
+                
+                <div class="question">
+                    <label>What went well?</label>
+                    <textarea id="went-well" placeholder="Describe what you did right..."></textarea>
+                </div>
+                
+                <div class="question">
+                    <label>What would you do differently?</label>
+                    <textarea id="do-differently" placeholder="Reflect on areas for improvement..."></textarea>
+                </div>
+                
+                <div class="question">
+                    <label>Emotional state after trading:</label>
+                    <select id="emotional-state">
+                        <option value="">Select...</option>
+                        <option value="calm">Calm & Confident</option>
+                        <option value="satisfied">Satisfied</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="frustrated">Frustrated</option>
+                        <option value="anxious">Anxious</option>
+                        <option value="overconfident">Overconfident</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button id="submit-feedback" class="primary-btn">Submit Feedback</button>
+        </div>
+
+        <!-- Checklist Screen -->
+        <div id="checklist-screen" class="screen">
+            <h2>Complete Your Pre-Trading Checklist</h2>
+            <div id="checklist-container">
+                <!-- Checklist items will be populated here -->
+            </div>
+            <button id="complete-checklist" class="primary-btn" disabled>Complete Checklist</button>
+        </div>
+
+        <!-- Timer Screen -->
+        <div id="timer-screen" class="screen">
+            <h2>Cooling Off Period</h2>
+            <div class="timer-display">
+                <div id="timer-circle">
+                    <span id="timer-text">5:00</span>
+                </div>
+                <p>Please wait before accessing MT5</p>
+                <p class="timer-message">Use this time to review your strategy and prepare mentally</p>
+            </div>
+        </div>
+
+        <!-- MT5 Access Screen -->
+        <div id="access-screen" class="screen">
+            <h2>Ready to Trade</h2>
+            <div class="access-content">
+                <div class="checklist-summary">
+                    <h3>Your Trading Reminders:</h3>
+                    <ul id="reminder-list"></ul>
+                </div>
+                <button id="open-mt5" class="primary-btn large">Open MT5</button>
+                <button id="back-to-setup" class="secondary-btn">Back to Setup</button>
+            </div>
+        </div>
+
+        <!-- Progress Screen -->
+        <div id="progress-screen" class="screen">
+            <h2>Your Trading Progress</h2>
+            <div class="progress-stats">
+                <div class="stat-card">
+                    <h3>Sessions Completed</h3>
+                    <span id="total-sessions">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Average Discipline</h3>
+                    <span id="avg-discipline">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Best Streak</h3>
+                    <span id="best-streak">0</span>
+                </div>
+            </div>
+            <div class="recent-feedback">
+                <h3>Recent Sessions</h3>
+                <div id="feedback-history"></div>
+            </div>
+            <button id="back-from-progress" class="secondary-btn">Back</button>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="bottom-nav">
+            <button id="nav-setup" class="nav-btn active">Setup</button>
+            <button id="nav-trade" class="nav-btn">Trade</button>
+            <button id="nav-progress" class="nav-btn">Progress</button>
+        </nav>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
