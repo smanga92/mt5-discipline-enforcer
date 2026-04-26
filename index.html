@@ -1,157 +1,585 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MT5 Discipline Tracker</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="manifest" href="manifest.json">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Framework</title>
+<meta name="theme-color" content="#0a0a0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trade Framework">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f;--surface:#111118;--surface2:#1a1a24;--border:#2a2a3a;--border-bright:#3a3a50;
+    --text:#e8e8f0;--text-muted:#7070a0;--text-dim:#404060;--accent:#c8ff00;
+    --bull:#00e5a0;--bull-bg:#001a12;--bull-border:#003d2a;
+    --bear:#ff4d6d;--bear-bg:#1a0008;--bear-border:#3d0018;
+    --pro:#4d9eff;--pro-bg:#001230;--pro-border:#002a6e;
+    --counter:#ffaa00;--counter-bg:#1a1000;--counter-border:#3d2800;
+    --broken:#ff6b9d;--broken-bg:#1a0010;
+    --notbroken:#a78bfa;--notbroken-bg:#0e0018;
+    --rev:#ff4d6d;--cont:#4d9eff;
+    --radius:12px;--radius-sm:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(200,255,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,255,0,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+  .view{display:none;position:relative;z-index:1;}
+  .view.active{display:block;}
+
+  /* WATCHLIST */
+  #watchlistView{min-height:100vh;padding-bottom:100px;}
+  .wl-header{padding:28px 20px 20px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(10,10,15,0.95);backdrop-filter:blur(12px);z-index:10;}
+  .wl-eyebrow{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:4px;}
+  .wl-title{font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1;}
+  .wl-title span{color:var(--accent);}
+  .wl-header-actions{display:flex;gap:8px;align-items:center;}
+  .btn-clear-all{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);background:transparent;border:1px solid var(--border);border-radius:6px;padding:7px 10px;cursor:pointer;transition:border-color 0.15s,color 0.15s;}
+  .btn-clear-all:hover{border-color:var(--bear);color:var(--bear);}
+  .btn-add-pair{background:var(--accent);color:#0a0a0f;border:none;border-radius:8px;padding:9px 16px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s;white-space:nowrap;}
+  .btn-add-pair:hover{background:#d4ff1a;}
+  .wl-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 32px;text-align:center;gap:10px;}
+  .wl-empty-icon{font-size:38px;opacity:0.25;margin-bottom:4px;}
+  .wl-empty-title{font-size:16px;font-weight:700;color:var(--text-muted);}
+  .wl-empty-sub{font-size:13px;color:var(--text-dim);line-height:1.5;}
+  .wl-empty-btn{margin-top:10px;background:var(--accent);color:#0a0a0f;border:none;border-radius:8px;padding:13px 26px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s;}
+  .wl-empty-btn:hover{background:#d4ff1a;}
+  .wl-count-bar{padding:12px 20px 8px;display:flex;align-items:center;justify-content:space-between;}
+  .wl-count{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.06em;}
+  .wl-list{padding:0 16px;display:flex;flex-direction:column;gap:10px;}
+
+  /* PAIR CARDS */
+  .pair-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color 0.2s;animation:cardIn 0.3s ease forwards;}
+  .pair-card:hover{border-color:var(--border-bright);}
+  @keyframes cardIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .pair-card-top{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none;}
+  .pair-trade-bar{width:4px;border-radius:2px;align-self:stretch;flex-shrink:0;}
+  .pair-trade-bar.rev{background:var(--bear);}
+  .pair-trade-bar.cont{background:var(--cont);}
+  .pair-main{flex:1;min-width:0;}
+  .pair-name{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--accent);letter-spacing:0.06em;line-height:1.2;}
+  .pair-summary{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;}
+  .mini-pill{font-family:'Space Mono',monospace;font-size:9px;padding:2px 7px;border-radius:100px;border:1px solid var(--border);color:var(--text-muted);white-space:nowrap;}
+  .mini-pill.bull{color:var(--bull);border-color:var(--bull-border);background:var(--bull-bg);}
+  .mini-pill.bear{color:var(--bear);border-color:var(--bear-border);background:var(--bear-bg);}
+  .mini-pill.pro{color:var(--pro);border-color:var(--pro-border);background:var(--pro-bg);}
+  .mini-pill.counter{color:var(--counter);border-color:var(--counter-border);background:var(--counter-bg);}
+  .mini-pill.broken{color:var(--broken);border-color:rgba(255,107,157,0.3);background:var(--broken-bg);}
+  .mini-pill.notbroken{color:var(--notbroken);border-color:rgba(167,139,250,0.3);background:var(--notbroken-bg);}
+  .mini-pill.neutral{color:var(--text-muted);}
+  .pair-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .pair-trade-badge{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;border-radius:6px;border:1px solid;}
+  .pair-trade-badge.rev{color:var(--rev);border-color:rgba(255,77,109,0.3);background:var(--bear-bg);}
+  .pair-trade-badge.cont{color:var(--cont);border-color:rgba(77,158,255,0.3);background:var(--pro-bg);}
+  .pair-chevron{font-size:14px;color:var(--text-dim);transition:transform 0.25s,color 0.15s;line-height:1;}
+  .pair-card.expanded .pair-chevron{transform:rotate(90deg);color:var(--text-muted);}
+  .pair-detail{max-height:0;overflow:hidden;transition:max-height 0.35s cubic-bezier(0.4,0,0.2,1);}
+  .pair-card.expanded .pair-detail{max-height:700px;border-top:1px solid var(--border);}
+  .pair-detail-inner{padding:16px;display:flex;flex-direction:column;gap:12px;}
+  .detail-row{display:flex;gap:10px;align-items:flex-start;}
+  .detail-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);min-width:72px;padding-top:2px;flex-shrink:0;}
+  .detail-value{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;}
+  .detail-value.accent{color:var(--accent);}
+  .detail-value.muted{color:var(--text-muted);font-weight:400;font-size:12px;}
+  .detail-tiers{display:flex;flex-direction:column;gap:6px;}
+  .detail-tier{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);}
+  .detail-tier.hihi{border-color:rgba(200,255,0,0.2);background:rgba(200,255,0,0.03);}
+  .detail-tier-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .detail-tier.lo .detail-tier-dot{background:var(--text-dim);}
+  .detail-tier.hi .detail-tier-dot{background:var(--bull);}
+  .detail-tier.hihi .detail-tier-dot{background:var(--accent);box-shadow:0 0 6px rgba(200,255,0,0.5);}
+  .detail-tier-text{font-size:11px;color:var(--text-muted);line-height:1.4;}
+  .detail-tier.hihi .detail-tier-text{color:var(--text);}
+  .detail-tier-prob{font-family:'Space Mono',monospace;font-size:9px;margin-right:3px;}
+  .detail-tier.lo .detail-tier-prob{color:var(--text-dim);}
+  .detail-tier.hi .detail-tier-prob{color:var(--bull);}
+  .detail-tier.hihi .detail-tier-prob{color:var(--accent);}
+  .pair-detail-actions{display:flex;gap:8px;}
+  .btn-re-analyse{flex:1;background:transparent;border:1px solid var(--border-bright);border-radius:8px;padding:10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;transition:border-color 0.15s,color 0.15s;text-align:center;}
+  .btn-re-analyse:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-remove-pair{flex:1;background:transparent;border:1px solid rgba(255,77,109,0.2);border-radius:8px;padding:10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--bear);cursor:pointer;transition:background 0.15s,border-color 0.15s;text-align:center;opacity:0.7;}
+  .btn-remove-pair:hover{background:var(--bear-bg);border-color:var(--bear);opacity:1;}
+  .pair-timestamp{font-family:'Space Mono',monospace;font-size:9px;color:var(--text-dim);padding:0 16px 12px;letter-spacing:0.05em;}
+  .fab{position:fixed;bottom:24px;right:20px;background:var(--accent);color:#0a0a0f;border:none;border-radius:50px;padding:14px 22px;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 24px rgba(200,255,0,0.25);transition:background 0.15s,transform 0.1s;z-index:20;}
+  .fab:hover{background:#d4ff1a;}
+  .fab:active{transform:scale(0.97);}
+
+  /* ANALYSIS VIEW */
+  #analysisView{min-height:100vh;padding-bottom:60px;}
+  .av-header{padding:18px 20px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:rgba(10,10,15,0.95);backdrop-filter:blur(12px);z-index:10;}
+  .btn-back{background:transparent;border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);cursor:pointer;transition:border-color 0.15s,color 0.15s;flex-shrink:0;}
+  .btn-back:hover{border-color:var(--text-muted);color:var(--text);}
+  .av-pair-label{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--accent);letter-spacing:0.1em;}
+  .av-content{padding:20px 16px;max-width:520px;margin:0 auto;}
+  .pair-input-label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;}
+  .pair-input-row{display:flex;gap:10px;}
+  .pair-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 15px;font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
+  .pair-input::placeholder{color:var(--text-dim);font-weight:400;}
+  .pair-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,255,0,0.08);}
+  .pair-start-btn{background:var(--accent);color:#0a0a0f;border:none;border-radius:var(--radius-sm);padding:13px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background 0.15s;}
+  .pair-start-btn:hover{background:#d4ff1a;}
+  .progress-wrap{margin-bottom:18px;}
+  .progress-info{display:flex;justify-content:space-between;margin-bottom:7px;}
+  .progress-label{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.05em;}
+  .progress-bar-bg{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .progress-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.4s cubic-bezier(0.4,0,0.2,1);}
+  .trail{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;min-height:24px;}
+  .trail-item{font-family:'Space Mono',monospace;font-size:10px;padding:3px 9px;border-radius:100px;border:1px solid var(--border);color:var(--text-muted);display:flex;align-items:center;gap:5px;animation:fadeSlide 0.25s ease forwards;}
+  .trail-item .tdot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;}
+  .trail-item.bull{border-color:var(--bull-border);color:var(--bull);background:var(--bull-bg);}
+  .trail-item.bear{border-color:var(--bear-border);color:var(--bear);background:var(--bear-bg);}
+  .trail-item.pro{border-color:var(--pro-border);color:var(--pro);background:var(--pro-bg);}
+  .trail-item.counter{border-color:var(--counter-border);color:var(--counter);background:var(--counter-bg);}
+  .trail-item.broken{border-color:rgba(255,107,157,0.3);color:var(--broken);background:var(--broken-bg);}
+  .trail-item.notbroken{border-color:rgba(167,139,250,0.3);color:var(--notbroken);background:var(--notbroken-bg);}
+  .trail-item.neutral{border-color:var(--border);color:var(--text-muted);}
+  @keyframes fadeSlide{from{opacity:0;transform:translateX(-6px);}to{opacity:1;transform:translateX(0);}}
+  .step-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;animation:cardIn 0.3s ease forwards;margin-bottom:12px;}
+  @keyframes cardIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  .step-header{padding:15px 18px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+  .step-num{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;color:var(--accent);background:rgba(200,255,0,0.08);border:1px solid rgba(200,255,0,0.2);border-radius:6px;padding:3px 7px;flex-shrink:0;}
+  .step-question{font-size:14px;font-weight:700;color:var(--text);line-height:1.3;}
+  .step-hint{padding:9px 18px 12px;font-size:12px;color:var(--text-muted);line-height:1.5;}
+  .choices{padding:0 14px 14px;display:flex;flex-direction:column;gap:7px;}
+  .choice-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;cursor:pointer;text-align:left;transition:border-color 0.15s,background 0.15s,transform 0.1s;display:flex;align-items:center;gap:11px;position:relative;overflow:hidden;}
+  .choice-btn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,#fff);opacity:0;transition:opacity 0.15s;}
+  .choice-btn:hover::before{opacity:1;}
+  .choice-btn:hover{background:var(--surface);border-color:var(--c,var(--border-bright));transform:translateX(3px);}
+  .choice-btn:active{transform:translateX(3px) scale(0.99);}
+  .choice-btn.bull{--c:var(--bull);}
+  .choice-btn.bear{--c:var(--bear);}
+  .choice-btn.pro{--c:var(--pro);}
+  .choice-btn.counter{--c:var(--counter);}
+  .choice-btn.broken{--c:var(--broken);}
+  .choice-btn.notbroken{--c:var(--notbroken);}
+  .choice-btn.neutral{--c:var(--text-muted);}
+  .choice-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);}
+  .choice-btn.bull .choice-icon{background:var(--bull-bg);border-color:var(--bull-border);}
+  .choice-btn.bear .choice-icon{background:var(--bear-bg);border-color:var(--bear-border);}
+  .choice-btn.pro .choice-icon{background:var(--pro-bg);border-color:var(--pro-border);}
+  .choice-btn.counter .choice-icon{background:var(--counter-bg);border-color:var(--counter-border);}
+  .choice-btn.broken .choice-icon{background:var(--broken-bg);border-color:rgba(255,107,157,0.3);}
+  .choice-btn.notbroken .choice-icon{background:var(--notbroken-bg);border-color:rgba(167,139,250,0.3);}
+  .choice-btn.neutral .choice-icon{background:var(--surface);}
+  .choice-text{flex:1;}
+  .choice-label{font-size:13px;font-weight:700;color:var(--text);line-height:1.2;}
+  .choice-sub{font-size:11px;color:var(--text-muted);margin-top:2px;font-weight:400;line-height:1.4;}
+  .choice-arrow{font-size:15px;color:var(--text-dim);flex-shrink:0;transition:color 0.15s,transform 0.15s;}
+  .choice-btn:hover .choice-arrow{color:var(--text-muted);transform:translateX(3px);}
+  .result-card{background:var(--surface);border:1px solid var(--border-bright);border-radius:var(--radius);overflow:hidden;animation:cardIn 0.35s ease forwards;margin-bottom:14px;}
+  .result-card.rev .result-header{border-top:3px solid var(--bear);}
+  .result-card.cont .result-header{border-top:3px solid var(--cont);}
+  .result-header{padding:16px 18px 14px;border-bottom:1px solid var(--border);}
+  .result-eyebrow{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:5px;}
+  .result-card.rev .result-eyebrow{color:var(--bear);}
+  .result-card.cont .result-eyebrow{color:var(--cont);}
+  .result-title{font-size:20px;font-weight:800;letter-spacing:-0.02em;}
+  .result-card.rev .result-title{color:var(--bear);}
+  .result-card.cont .result-title{color:var(--cont);}
+  .summary-pills{display:flex;flex-wrap:wrap;gap:5px;padding:12px 18px;border-bottom:1px solid var(--border);}
+  .pill{font-family:'Space Mono',monospace;font-size:9px;padding:3px 8px;border-radius:100px;border:1px solid var(--border);color:var(--text-muted);}
+  .pill.bull{color:var(--bull);border-color:var(--bull-border);background:var(--bull-bg);}
+  .pill.bear{color:var(--bear);border-color:var(--bear-border);background:var(--bear-bg);}
+  .pill.pro{color:var(--pro);border-color:var(--pro-border);background:var(--pro-bg);}
+  .pill.counter{color:var(--counter);border-color:var(--counter-border);background:var(--counter-bg);}
+  .pill.broken{color:var(--broken);border-color:rgba(255,107,157,0.3);background:var(--broken-bg);}
+  .pill.notbroken{color:var(--notbroken);border-color:rgba(167,139,250,0.3);background:var(--notbroken-bg);}
+  .pill.neutral{color:var(--text-muted);}
+  .result-rows{padding:14px 18px;display:flex;flex-direction:column;gap:10px;}
+  .result-row{display:flex;gap:10px;align-items:flex-start;}
+  .result-row-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);min-width:74px;padding-top:2px;flex-shrink:0;}
+  .result-row-value{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;}
+  .result-row-value.accent{color:var(--accent);}
+  .result-row-value.muted{color:var(--text-muted);font-weight:400;font-size:12px;}
+  .tf-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(200,255,0,0.06);border:1px solid rgba(200,255,0,0.15);border-radius:6px;padding:6px 12px;margin:0 18px 16px;}
+  .tf-badge-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.1em;color:var(--text-muted);text-transform:uppercase;}
+  .tf-badge-value{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--accent);}
+  .section-divider{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);text-align:center;padding:4px 0 10px;}
+  .entry-tiers{padding:0 16px 16px;display:flex;flex-direction:column;gap:7px;}
+  .tier{border-radius:8px;border:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;gap:9px;}
+  .tier.hihi{border-color:rgba(200,255,0,0.2);background:rgba(200,255,0,0.03);}
+  .tier-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .tier.lo .tier-dot{background:var(--text-dim);}
+  .tier.hi .tier-dot{background:var(--bull);}
+  .tier.hihi .tier-dot{background:var(--accent);box-shadow:0 0 7px rgba(200,255,0,0.5);}
+  .tier-content{flex:1;}
+  .tier-prob{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:2px;}
+  .tier.lo .tier-prob{color:var(--text-dim);}
+  .tier.hi .tier-prob{color:var(--bull);}
+  .tier.hihi .tier-prob{color:var(--accent);}
+  .tier-desc{font-size:11px;color:var(--text-muted);line-height:1.4;}
+  .tier.hihi .tier-desc{color:var(--text);}
+  .result-actions{display:flex;gap:8px;}
+  .btn-save{flex:1;background:var(--accent);border:none;border-radius:8px;padding:13px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#0a0a0f;cursor:pointer;transition:background 0.15s;text-align:center;}
+  .btn-save:hover{background:#d4ff1a;}
+  .btn-redo{background:transparent;border:1px solid var(--border-bright);border-radius:8px;padding:13px 16px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text-muted);cursor:pointer;transition:border-color 0.15s,color 0.15s;white-space:nowrap;}
+  .btn-redo:hover{border-color:var(--text-muted);color:var(--text);}
+  .btn-back-step{width:100%;background:transparent;border:1px solid var(--border);border-radius:8px;padding:11px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text-dim);cursor:pointer;letter-spacing:0.05em;transition:border-color 0.15s,color 0.15s;margin-top:4px;}
+  .btn-back-step:hover{border-color:var(--border-bright);color:var(--text-muted);}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;backdrop-filter:blur(4px);animation:fadeIn 0.2s ease;}
+  .modal-overlay.hidden{display:none;}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .modal{background:var(--surface);border:1px solid var(--border-bright);border-radius:var(--radius);padding:24px 20px;max-width:320px;width:100%;animation:modalIn 0.25s cubic-bezier(0.4,0,0.2,1);}
+  @keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+  .modal-title{font-size:16px;font-weight:800;color:var(--text);margin-bottom:8px;}
+  .modal-body{font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:20px;}
+  .modal-actions{display:flex;gap:8px;}
+  .modal-cancel{flex:1;background:transparent;border:1px solid var(--border-bright);border-radius:8px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text-muted);cursor:pointer;transition:border-color 0.15s,color 0.15s;}
+  .modal-cancel:hover{color:var(--text);border-color:var(--text-muted);}
+  .modal-confirm{flex:1;background:var(--bear-bg);border:1px solid var(--bear-border);border-radius:8px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--bear);cursor:pointer;transition:background 0.15s;}
+  .modal-confirm:hover{background:rgba(255,77,109,0.15);}
+  .hidden{display:none!important;}
+
+  /* QUALITY BADGE */
+  .quality-badge{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:5px 10px;border-radius:6px;margin-bottom:10px;display:inline-block;}
+  .quality-badge.best{color:#0a0a0f;background:var(--accent);box-shadow:0 0 12px rgba(200,255,0,0.3);}
+  .quality-badge.good{color:var(--bull);background:var(--bull-bg);border:1px solid var(--bull-border);}
+  .quality-badge.low{color:var(--counter);background:var(--counter-bg);border:1px solid var(--counter-border);}
+  .sideways-banner{background:rgba(255,200,0,0.08);border:1px solid rgba(255,200,0,0.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-family:'Space Mono',monospace;font-size:11px;color:#ffc800;letter-spacing:0.04em;}
+  .sideways-banner span{font-weight:700;}
+
+  /* WAIT RESULT CARD */
+  .result-card.wait{border-color:rgba(255,170,0,0.3);}
+  .result-card.wait .result-header{border-top:3px solid var(--counter);}
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>MT5 Discipline Tracker</h1>
-            <div class="streak-counter">
-                <span id="streak">Streak: 0 days</span>
-            </div>
-        </header>
 
-        <!-- Setup Screen -->
-        <div id="setup-screen" class="screen active">
-            <h2>Setup Your Trading Checklist</h2>
-            <div class="setup-section">
-                <h3>Pre-Trading Checklist</h3>
-                <div id="checklist-builder">
-                    <div class="checklist-item">
-                        <input type="text" placeholder="e.g., Market analysis complete" class="checklist-input">
-                        <button class="remove-item">×</button>
-                    </div>
-                </div>
-                <button id="add-checklist-item">+ Add Item</button>
-            </div>
-            
-            <div class="setup-section">
-                <h3>Delay Timer (minutes)</h3>
-                <input type="number" id="delay-input" min="1" max="60" value="5">
-            </div>
-            
-            <button id="save-setup" class="primary-btn">Save Setup</button>
-        </div>
-
-        <!-- Feedback Screen -->
-        <div id="feedback-screen" class="screen">
-            <h2>How Was Your Last Trading Session?</h2>
-            <div class="feedback-section">
-                <div class="question">
-                    <label>Did you follow your trading plan?</label>
-                    <select id="followed-plan">
-                        <option value="">Select...</option>
-                        <option value="yes">Yes, completely</option>
-                        <option value="mostly">Mostly</option>
-                        <option value="partially">Partially</option>
-                        <option value="no">No, I deviated</option>
-                    </select>
-                </div>
-                
-                <div class="question">
-                    <label>Rate your discipline (1-10):</label>
-                    <input type="range" id="discipline-rating" min="1" max="10" value="5">
-                    <span id="discipline-value">5</span>
-                </div>
-                
-                <div class="question">
-                    <label>What went well?</label>
-                    <textarea id="went-well" placeholder="Describe what you did right..."></textarea>
-                </div>
-                
-                <div class="question">
-                    <label>What would you do differently?</label>
-                    <textarea id="do-differently" placeholder="Reflect on areas for improvement..."></textarea>
-                </div>
-                
-                <div class="question">
-                    <label>Emotional state after trading:</label>
-                    <select id="emotional-state">
-                        <option value="">Select...</option>
-                        <option value="calm">Calm & Confident</option>
-                        <option value="satisfied">Satisfied</option>
-                        <option value="neutral">Neutral</option>
-                        <option value="frustrated">Frustrated</option>
-                        <option value="anxious">Anxious</option>
-                        <option value="overconfident">Overconfident</option>
-                    </select>
-                </div>
-            </div>
-            
-            <button id="submit-feedback" class="primary-btn">Submit Feedback</button>
-        </div>
-
-        <!-- Checklist Screen -->
-        <div id="checklist-screen" class="screen">
-            <h2>Complete Your Pre-Trading Checklist</h2>
-            <div id="checklist-container">
-                <!-- Checklist items will be populated here -->
-            </div>
-            <button id="complete-checklist" class="primary-btn" disabled>Complete Checklist</button>
-        </div>
-
-        <!-- Timer Screen -->
-        <div id="timer-screen" class="screen">
-            <h2>Cooling Off Period</h2>
-            <div class="timer-display">
-                <div id="timer-circle">
-                    <span id="timer-text">5:00</span>
-                </div>
-                <p>Please wait before accessing MT5</p>
-                <p class="timer-message">Use this time to review your strategy and prepare mentally</p>
-            </div>
-        </div>
-
-        <!-- MT5 Access Screen -->
-        <div id="access-screen" class="screen">
-            <h2>Ready to Trade</h2>
-            <div class="access-content">
-                <div class="checklist-summary">
-                    <h3>Your Trading Reminders:</h3>
-                    <ul id="reminder-list"></ul>
-                </div>
-                <button id="open-mt5" class="primary-btn large">Open MT5</button>
-                <button id="back-to-setup" class="secondary-btn">Back to Setup</button>
-            </div>
-        </div>
-
-        <!-- Progress Screen -->
-        <div id="progress-screen" class="screen">
-            <h2>Your Trading Progress</h2>
-            <div class="progress-stats">
-                <div class="stat-card">
-                    <h3>Sessions Completed</h3>
-                    <span id="total-sessions">0</span>
-                </div>
-                <div class="stat-card">
-                    <h3>Average Discipline</h3>
-                    <span id="avg-discipline">0</span>
-                </div>
-                <div class="stat-card">
-                    <h3>Best Streak</h3>
-                    <span id="best-streak">0</span>
-                </div>
-            </div>
-            <div class="recent-feedback">
-                <h3>Recent Sessions</h3>
-                <div id="feedback-history"></div>
-            </div>
-            <button id="back-from-progress" class="secondary-btn">Back</button>
-        </div>
-
-        <!-- Navigation -->
-        <nav class="bottom-nav">
-            <button id="nav-setup" class="nav-btn active">Setup</button>
-            <button id="nav-trade" class="nav-btn">Trade</button>
-            <button id="nav-progress" class="nav-btn">Progress</button>
-        </nav>
+<div id="watchlistView" class="view active">
+  <div class="wl-header">
+    <div>
+      <div class="wl-eyebrow">Trade Framework</div>
+      <div class="wl-title">Watch<span>list</span></div>
     </div>
+    <div class="wl-header-actions">
+      <button class="btn-clear-all" id="btnClearAll" onclick="confirmClearAll()">Clear all</button>
+      <button class="btn-add-pair" onclick="openAnalysis()">+ Analyse</button>
+    </div>
+  </div>
+  <div id="wlBody"></div>
+  <button class="fab" onclick="openAnalysis()">+ Add Pair</button>
+</div>
 
-    <script src="script.js"></script>
+<div id="analysisView" class="view">
+  <div class="av-header">
+    <button class="btn-back" onclick="backToWatchlist()">&#8592; Back</button>
+    <span class="av-pair-label" id="avPairLabel">&#8212;</span>
+  </div>
+  <div class="av-content">
+    <div id="pairSection">
+      <div class="pair-input-label">Currency pair / instrument</div>
+      <div class="pair-input-row">
+        <input id="pairInput" class="pair-input" type="text" placeholder="e.g. EURUSD" maxlength="12" autocomplete="off" autocorrect="off" spellcheck="false" />
+        <button class="pair-start-btn" onclick="startAnalysis()">Analyse &#8594;</button>
+      </div>
+    </div>
+    <div class="progress-wrap hidden" id="progressWrap">
+      <div class="progress-info">
+        <span class="progress-label" id="progressLabel">Step 1</span>
+        <span class="progress-label" id="progressAccent" style="color:var(--accent)"></span>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div class="trail" id="trail"></div>
+    <div id="stepContent"></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Are you sure?</div>
+    <div class="modal-body"  id="modalBody">This cannot be undone.</div>
+    <div class="modal-actions">
+      <button class="modal-cancel"  onclick="closeModal()">Cancel</button>
+      <button class="modal-confirm" id="modalConfirmBtn">Remove</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY='tf_watchlist_v1';
+function loadWatchlist(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||[];}catch{return[];}}
+function saveWatchlist(l){localStorage.setItem(STORAGE_KEY,JSON.stringify(l));}
+let watchlist=loadWatchlist();
+let aState={pair:'',htf:'',orderFlow:'',momentum:'',broken:'',pullback:'',step:0};
+let aTrail=[];
+
+function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+
+function openAnalysis(prefillPair){
+  resetAnalysisState();
+  if(prefillPair){
+    aState.pair=prefillPair;
+    document.getElementById('pairSection').classList.add('hidden');
+    document.getElementById('progressWrap').classList.remove('hidden');
+    document.getElementById('avPairLabel').textContent=prefillPair;
+    renderStep();
+  }else{
+    document.getElementById('pairSection').classList.remove('hidden');
+    document.getElementById('progressWrap').classList.add('hidden');
+    document.getElementById('stepContent').innerHTML='';
+    document.getElementById('trail').innerHTML='';
+    document.getElementById('pairInput').value='';
+    document.getElementById('avPairLabel').textContent='\u2014';
+    setTimeout(()=>document.getElementById('pairInput').focus(),120);
+  }
+  showView('analysisView');
+}
+
+function backToWatchlist(){showView('watchlistView');renderWatchlist();}
+
+function renderWatchlist(){
+  const body=document.getElementById('wlBody');
+  if(watchlist.length===0){
+    document.getElementById('btnClearAll').style.display='none';
+    body.innerHTML='<div class="wl-empty"><div class="wl-empty-icon">\uD83D\uDCCB</div><div class="wl-empty-title">No pairs yet</div><div class="wl-empty-sub">Analyse a pair and save it here.<br>All your setups in one scroll.</div><button class="wl-empty-btn" onclick="openAnalysis()">+ Analyse First Pair</button></div>';
+    return;
+  }
+  document.getElementById('btnClearAll').style.display='';
+  const revCount=watchlist.filter(p=>p.result.tradeType==='reversal').length;
+  const contCount=watchlist.filter(p=>p.result.tradeType==='continuation').length;
+  body.innerHTML='<div class="wl-count-bar"><span class="wl-count" style="color:var(--text-muted)">'+watchlist.length+' pair'+(watchlist.length!==1?'s':'')+'</span><span class="wl-count"><span style="color:var(--bear)">'+revCount+' reversal'+(revCount!==1?'s':'')+'</span> &middot; <span style="color:var(--cont)">'+contCount+' continuation'+(contCount!==1?'s':'')+'</span></span></div><div class="wl-list">'+watchlist.map((p,i)=>pairCardHTML(p,i)).join('')+'</div>';
+}
+
+function pairCardHTML(p,i){
+  const r=p.result;
+  const cls=r.tradeType==='reversal'?'rev':'cont';
+  const subTypeMap={'pro':'Pro Trend','resumption':'HTF Resumption','counter':'Counter Trend','postbreak':'Post-Break'};
+  const tradeLabel=r.tradeType==='reversal'?'Reversal':(subTypeMap[r.subType]||'Continuation');
+  const ts=new Date(p.timestamp);
+  const timeStr=ts.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const pills=p.trail.map(t=>'<span class="mini-pill '+t.cls+'">'+t.label+'</span>').join('');
+  return '<div class="pair-card" id="card-'+i+'"><div class="pair-card-top" onclick="toggleCard('+i+')"><div class="pair-trade-bar '+cls+'"></div><div class="pair-main"><div class="pair-name">'+p.pair+'</div><div class="pair-summary">'+pills+'</div></div><div class="pair-right"><div class="pair-trade-badge '+cls+'">'+tradeLabel+'</div><div class="pair-chevron">\u203A</div></div></div><div class="pair-detail" id="detail-'+i+'"><div class="pair-detail-inner"><div class="detail-row"><div class="detail-label">Take Profit</div><div class="detail-value accent">'+r.tp+'</div></div><div class="detail-row"><div class="detail-label">Specifically</div><div class="detail-value">'+r.tpNote+'</div></div>'+(r.rideNote?'<div class="detail-row"><div class="detail-label">Note</div><div class="detail-value muted">'+r.rideNote+'</div></div>':'')+'<div class="detail-row"><div class="detail-label">Entry TF</div><div class="detail-value">'+r.entryTF+' <span style="color:var(--text-dim)">&middot;</span> <span style="color:var(--text-muted);font-size:12px;font-weight:400">Confirm on '+r.confirmCandle+'</span></div></div><div class="detail-tiers"><div class="detail-tier lo"><div class="detail-tier-dot"></div><div class="detail-tier-text"><span class="detail-tier-prob">Low</span>Structure break only</div></div><div class="detail-tier hi"><div class="detail-tier-dot"></div><div class="detail-tier-text"><span class="detail-tier-prob">High</span>Structure break + '+r.confirmCandle+' broken</div></div><div class="detail-tier hihi"><div class="detail-tier-dot"></div><div class="detail-tier-text"><span class="detail-tier-prob">\u2605 Highest</span>Structure break + '+r.confirmCandle+' broken + sweep of opposite side first</div></div></div><div class="pair-detail-actions"><button class="btn-re-analyse" onclick="openAnalysis(\''+p.pair+'\')">&#8635; Re-analyse</button><button class="btn-remove-pair" onclick="confirmRemovePair('+i+')">Remove</button></div></div><div class="pair-timestamp">Analysed '+timeStr+'</div></div></div>';
+}
+
+function toggleCard(i){
+  const card=document.getElementById('card-'+i);
+  const was=card.classList.contains('expanded');
+  document.querySelectorAll('.pair-card.expanded').forEach(c=>c.classList.remove('expanded'));
+  if(!was)card.classList.add('expanded');
+}
+
+function getSteps(){
+  const o=aState.orderFlow;const isBull=o==='bull';const isSideways=o==='sideways';
+  const steps=[
+    {id:'htf',num:'Step 01',question:'Which Higher Timeframe are you using?',hint:'This determines your entry and confirmation timeframes.',choices:[
+      {key:'weekly',cls:'neutral',icon:'\uD83D\uDCC5',label:'Weekly',sub:'Entry on H1 \u00B7 Confirm on Daily candle'},
+      {key:'daily', cls:'neutral',icon:'\uD83D\uDD50',label:'Daily', sub:'Entry on M15 \u00B7 Confirm on 4H candle'}
+    ]},
+    {id:'orderFlow',num:'Step 02',question:'What is the HTF Order Flow?',hint:'Higher highs & higher lows = bullish. Lower highs & lower lows = bearish. Ranging between levels = sideways.',choices:[
+      {key:'bull',    cls:'bull',    icon:'\u25B2',label:'Bullish',  sub:'Higher highs & higher lows'},
+      {key:'bear',    cls:'bear',   icon:'\u25BC',label:'Bearish',  sub:'Lower highs & lower lows'},
+      {key:'sideways',cls:'neutral',icon:'\u21C4', label:'Sideways',sub:'Ranging between a defined high and low'}
+    ]},
+    {id:'momentum',num:'Step 03',
+      question:isSideways?'Is price momentum Bullish or Bearish?':'Is price momentum Pro Trend or Counter Trend?',
+      hint:isSideways?'Is the current momentum bullish (looking to buy) or bearish (looking to sell)?':'Is current price moving WITH the HTF order flow or AGAINST it?',
+      choices:isSideways?[
+        {key:'pro',    cls:'bull',   icon:'\u25B2',label:'Bullish',sub:'Looking to buy — TP previous day/H4 high'},
+        {key:'counter',cls:'bear',   icon:'\u25BC',label:'Bearish',sub:'Looking to sell — TP previous day/H4 low'}
+      ]:[
+        {key:'pro',    cls:'pro',    icon:'\u2192',label:'Pro Trend',    sub:'Moving with the HTF direction'},
+        {key:'counter',cls:'counter',icon:'\u2190',label:'Counter Trend',sub:'Moving against the HTF direction'}
+      ]
+    },
+    {id:'broken',num:'Step 04',question:'Has price broken the previous HTF High or Low?',hint:'Has the current move taken out the previous HTF session swing point?',choices:[
+      {key:'broken',   cls:'broken',   icon:'\u26A1',label:'Broken',    sub:'Previous HTF level has been taken out'},
+      {key:'notbroken',cls:'notbroken',icon:'\u25A0',label:'Not Broken',sub:'Previous HTF level still intact'}
+    ]},
+  ];
+
+  if(aState.broken==='broken'){
+    steps.push({id:'pullback',num:'Step 05',question:'Has price pulled back enough for a continuation?',hint:'After breaking, has price retraced into valid value with order flow now in pullback mode?',choices:[
+      {key:'yes',cls:'pro',    icon:'\u2713',label:'Yes \u2014 Pullback complete',sub:'Retraced into value, order flow in pullback mode'},
+      {key:'no', cls:'counter',icon:'\u2715',label:'No \u2014 Extended / just broke',sub:'No valid pullback yet'}
+    ]});
+  }
+
+  return steps;
+}
+
+function computeResult(){
+  const{orderFlow,momentum,broken,pullback,lowerMomentum,htf}=aState;
+  const isBull=orderFlow==='bull';
+  const isSideways=orderFlow==='sideways';
+  const isWeekly=htf==='weekly';
+  const entryTF=isWeekly?'H1 (1 Hour)':'M15 (15 Min)';
+  const confirmCandle=isWeekly?'Daily Candle':'4H Candle';
+
+  // Sideways TP helper — direction determined by what the trade actually is (buy or sell)
+  // isBuy = true when the trade is a buy, false when sell
+  function sidewaysTP(isBuy){
+    const period=isWeekly?'Previous Day':'Previous H4 Candle';
+    const level=isBuy?'High':'Low';
+    return{
+      tp:period+' '+level,
+      tpNote:period+' '+level+' — sideways range, take profit early, do not ride',
+      rideNote:'Sideways order flow — close target only.'
+    };
+  }
+
+  let tradeType,subType,quality,tp,tpNote,rideNote;
+
+  if(broken==='notbroken'){
+    if(momentum==='pro'){
+      tradeType='continuation'; subType='pro'; quality=isSideways?'good':'best';
+      if(isSideways){
+        // Pro trend in sideways = following the current momentum push
+        // Daily/4H aligning step tells us direction: aligning=bullish push=buy, counter=bearish push=sell
+        // At this branch lowerMomentum not yet asked, use momentum step as proxy
+        // pro + sideways = momentum is pushing, treat as buy (high TP) by default
+        // The daily/4H step will refine this in counter branch below
+        const s=sidewaysTP(true); tp=s.tp; tpNote=s.tpNote; rideNote=s.rideNote;
+      } else {
+        tp='Previous HTF Session High/Low';
+        tpNote=isBull?'Previous HTF session high':'Previous HTF session low';
+        rideNote='Can carefully ride until a Higher High or Lower Low is taken out.';
+      }
+    } else {
+      // Counter trend — trade with the counter momentum
+      tradeType='continuation'; subType='counter'; quality='good';
+      if(isSideways){const s=sidewaysTP(false); tp=s.tp; tpNote=s.tpNote; rideNote=s.rideNote;}
+      else{tp='Previous HTF Session High/Low'; tpNote=isBull?'Previous HTF session low':'Previous HTF session high'; rideNote='Counter trend momentum active. Trade with caution — against HTF order flow.';}
+    }
+  } else {
+    if(pullback==='yes'){
+      tradeType='continuation'; subType='postbreak'; quality='good';
+      if(isSideways){const s=sidewaysTP(momentum==='pro'); tp=s.tp; tpNote=s.tpNote; rideNote=s.rideNote;}
+      else{tp='Current HTF Session High/Low'; tpNote=isBull?'Current HTF session high':'Current HTF session low'; rideNote='Can carefully ride until a Higher High or Lower Low is taken out.';}
+    } else {
+      tradeType='reversal'; subType='counter'; quality='low';
+      if(isSideways){const s=sidewaysTP(momentum==='counter'); tp=s.tp; tpNote=s.tpNote; rideNote=s.rideNote;}
+      else{tp='Opposite HTF High/Low'; tpNote=isBull?'Opposite HTF high':'Opposite HTF low'; rideNote=momentum==='counter'?'Can carefully ride until HH or LL is taken out \u2014 this may be the turn back to pro trend.':null;}
+    }
+  }
+  return{tradeType,subType,quality,tp,tpNote,rideNote,entryTF,confirmCandle,isSideways};
+}
+
+function startAnalysis(){
+  const val=document.getElementById('pairInput').value.trim();
+  if(!val){document.getElementById('pairInput').focus();return;}
+  aState.pair=val.toUpperCase();aState.step=0;aTrail=[];
+  document.getElementById('pairSection').classList.add('hidden');
+  document.getElementById('progressWrap').classList.remove('hidden');
+  document.getElementById('avPairLabel').textContent=aState.pair;
+  renderStep();
+}
+
+function renderStep(){
+  const steps=getSteps();const cur=steps[aState.step];const total=steps.length;
+  document.getElementById('progressLabel').textContent='Step '+(aState.step+1)+' of '+total;
+  document.getElementById('progressFill').style.width=((aState.step/total)*100)+'%';
+  document.getElementById('trail').innerHTML=aTrail.map(t=>'<div class="trail-item '+t.cls+'"><div class="tdot"></div>'+t.label+'</div>').join('');
+  document.getElementById('stepContent').innerHTML='<div class="step-card"><div class="step-header"><span class="step-num">'+cur.num+'</span><span class="step-question">'+cur.question+'</span></div>'+(cur.hint?'<div class="step-hint">'+cur.hint+'</div>':'')+'<div class="choices">'+cur.choices.map(c=>'<button class="choice-btn '+c.cls+'" onclick="choose(\''+cur.id+'\',\''+c.key+'\',\''+c.label+'\',\''+c.cls+'\')"><div class="choice-icon">'+c.icon+'</div><div class="choice-text"><div class="choice-label">'+c.label+'</div>'+(c.sub?'<div class="choice-sub">'+c.sub+'</div>':'')+'</div><div class="choice-arrow">\u203A</div></button>').join('')+'</div></div>'+(aState.step>0?'<button class="btn-back-step" onclick="goBack()">\u2190 Back</button>':'');
+}
+
+function qualityBadge(quality){
+  if(quality==='best')  return '<div class="quality-badge best">\u2605\u2605\u2605 Best Setup \u2014 Pro Trend</div>';
+  if(quality==='good')  return '<div class="quality-badge good">\u2605\u2605 Good Setup</div>';
+  if(quality==='low')   return '<div class="quality-badge low">\u2605 Lower Probability</div>';
+  return '';
+}
+
+function renderResult(){
+  const r=computeResult();
+
+  document.getElementById('progressFill').style.width='100%';
+  document.getElementById('progressLabel').textContent='Complete';
+  document.getElementById('trail').innerHTML=aTrail.map(t=>'<div class="trail-item '+t.cls+'"><div class="tdot"></div>'+t.label+'</div>').join('');
+
+  const cls=r.tradeType==='reversal'?'rev':'cont';
+  const isSidewaysResult=aState.orderFlow==='sideways';
+  const labelMap={
+    'continuation-pro':     isSidewaysResult?'Bullish Continuation':'Pro Trend Continuation',
+    'continuation-counter': isSidewaysResult?'Bearish Continuation':'Counter Trend Continuation',
+    'continuation-postbreak': 'Post-Break Continuation',
+    'reversal-counter':       'Potential Reversal Trade'
+  };
+  const label=labelMap[r.tradeType+'-'+r.subType]||'Continuation Trade';
+
+  document.getElementById('stepContent').innerHTML=
+    '<div class="result-card '+cls+'">'+
+      '<div class="result-header">'+
+        qualityBadge(r.quality)+
+        (r.isSideways?'<div class="sideways-banner">\u21C4 <span>Sideways Range</span> — Close target. Do not ride. Take profit quickly.</div>':'')+
+        '<div class="result-eyebrow">Setup found \u2014 '+aState.pair+'</div>'+
+        '<div class="result-title">'+label+'</div>'+
+      '</div>'+
+      '<div class="summary-pills">'+aTrail.map(t=>'<span class="pill '+t.cls+'">'+t.label+'</span>').join('')+'</div>'+
+      '<div class="result-rows">'+
+        '<div class="result-row"><div class="result-row-label">Take Profit</div><div class="result-row-value accent">'+r.tp+'</div></div>'+
+        '<div class="result-row"><div class="result-row-label">Specifically</div><div class="result-row-value">'+r.tpNote+'</div></div>'+
+        (r.rideNote?'<div class="result-row"><div class="result-row-label">Note</div><div class="result-row-value muted">'+r.rideNote+'</div></div>':'')+
+      '</div>'+
+      '<div class="tf-badge">'+
+        '<span class="tf-badge-label">Entry TF</span><span class="tf-badge-value">'+r.entryTF+'</span>'+
+        '<span class="tf-badge-label" style="margin-left:8px">Confirm</span><span class="tf-badge-value">'+r.confirmCandle+'</span>'+
+      '</div>'+
+      '<div class="section-divider">Entry confirmation tiers</div>'+
+      '<div class="entry-tiers">'+
+        '<div class="tier lo"><div class="tier-dot"></div><div class="tier-content"><div class="tier-prob">Low probability</div><div class="tier-desc">Structure break on '+r.entryTF+' only</div></div></div>'+
+        '<div class="tier hi"><div class="tier-dot"></div><div class="tier-content"><div class="tier-prob">High probability</div><div class="tier-desc">Structure break + '+r.confirmCandle+' broken</div></div></div>'+
+        '<div class="tier hihi"><div class="tier-dot"></div><div class="tier-content"><div class="tier-prob">\u2605 Highest probability</div><div class="tier-desc">Structure break + '+r.confirmCandle+' broken + sweep of opposite side first</div></div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="result-actions"><button class="btn-save" onclick="saveAndReturn()">Save to Watchlist \u2192</button><button class="btn-redo" onclick="redoAnalysis()">\u21BA Redo</button></div>';
+}
+
+function choose(stepId,key,label,cls){
+  aState[stepId]=key;aTrail.push({key,label,cls});aState.step++;
+  const steps=getSteps();if(aState.step>=steps.length){renderResult();return;}renderStep();
+}
+
+function goBack(){
+  if(aState.step===0)return;aState.step--;aTrail.pop();
+  const steps=getSteps();const stepId=steps[aState.step].id;
+  aState[stepId]='';
+  if(stepId==='broken'){aState.pullback='';aState.lowerMomentum='';}
+  renderStep();
+}
+
+function redoAnalysis(){const pair=aState.pair;resetAnalysisState();aState.pair=pair;document.getElementById('avPairLabel').textContent=pair;renderStep();}
+
+function resetAnalysisState(){
+  aState={pair:'',htf:'',orderFlow:'',momentum:'',broken:'',pullback:'',step:0};aTrail=[];
+  document.getElementById('trail').innerHTML='';document.getElementById('stepContent').innerHTML='';
+  document.getElementById('progressFill').style.width='0%';
+}
+
+function saveAndReturn(){
+  const r=computeResult();
+  watchlist=watchlist.filter(p=>p.pair!==aState.pair);
+  watchlist.unshift({pair:aState.pair,trail:[...aTrail],result:r,timestamp:Date.now()});
+  saveWatchlist(watchlist);backToWatchlist();
+}
+
+let pendingAction=null;
+function confirmRemovePair(i){
+  document.getElementById('modalTitle').textContent='Remove '+watchlist[i].pair+'?';
+  document.getElementById('modalBody').textContent='This analysis will be removed from your watchlist.';
+  document.getElementById('modalConfirmBtn').textContent='Remove';
+  pendingAction=()=>{watchlist.splice(i,1);saveWatchlist(watchlist);renderWatchlist();};
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+function confirmClearAll(){
+  document.getElementById('modalTitle').textContent='Clear all pairs?';
+  document.getElementById('modalBody').textContent='All saved analyses will be permanently removed.';
+  document.getElementById('modalConfirmBtn').textContent='Clear all';
+  pendingAction=()=>{watchlist=[];saveWatchlist(watchlist);renderWatchlist();};
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.add('hidden');pendingAction=null;}
+document.getElementById('modalConfirmBtn').addEventListener('click',()=>{if(pendingAction){pendingAction();closeModal();}});
+document.getElementById('modalOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('modalOverlay'))closeModal();});
+document.getElementById('pairInput').addEventListener('keydown',e=>{if(e.key==='Enter')startAnalysis();});
+renderWatchlist();
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));}
+</script>
 </body>
-</html>
+    </html>
